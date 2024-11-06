@@ -9,7 +9,8 @@ import { tap } from 'rxjs/operators';
   providedIn: 'root',
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:3000/api/auth';
+  private apiUrl = 'https://backend-biometric.onrender.com/api/auth';
+  
   private readonly tokenKey = 'token';
 
   constructor(private http: HttpClient, private router: Router) {}
