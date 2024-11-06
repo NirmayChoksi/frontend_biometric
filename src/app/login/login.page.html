@@ -1,0 +1,54 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>{{ isLogin ? "Login" : "Register" }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  @if(authForm){
+  <form [formGroup]="authForm" (ngSubmit)="onSubmit()">
+    <!-- Email Field -->
+    <ion-item>
+      <ion-input
+        label="Email"
+        labelPlacement="floating"
+        formControlName="email"
+        type="email"
+        required
+      ></ion-input>
+    </ion-item>
+    @if (authForm.get('email')?.touched && authForm.get('email')?.invalid) {
+    <ion-text color="danger"> Valid email is required </ion-text>
+    }
+
+    <!-- Password Field -->
+    <ion-item>
+      <ion-input
+        label="Password"
+        labelPlacement="floating"
+        formControlName="password"
+        type="password"
+        required
+      ></ion-input>
+    </ion-item>
+    @if (authForm.get('password')?.touched && authForm.get('password')?.invalid)
+    {
+    <ion-text color="danger"> Password is required </ion-text>
+    }
+
+    <!-- Submit Button -->
+    <ion-button expand="block" type="submit" [disabled]="authForm.invalid">{{
+      isLogin ? "Login" : "Register"
+    }}</ion-button>
+
+    <!-- Toggle Login/Register -->
+    <ion-button expand="block" fill="clear" (click)="toggleAuthMode()">
+      {{
+        isLogin
+          ? "Don't have an account? Register"
+          : "Already have an account? Login"
+      }}
+    </ion-button>
+  </form>
+  }
+</ion-content>
