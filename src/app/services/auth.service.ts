@@ -10,7 +10,7 @@ import { tap } from 'rxjs/operators';
 })
 export class AuthService {
   private apiUrl = 'https://backend-biometric.onrender.com/api/auth';
-  
+
   private readonly tokenKey = 'token';
 
   constructor(private http: HttpClient, private router: Router) {}
@@ -57,5 +57,24 @@ export class AuthService {
   async isAuthenticated(): Promise<boolean> {
     const token = await this.getToken();
     return !!token;
+  }
+
+  async validateToken() {
+    const token = await this.getToken();
+    if (!token) {
+      return false; // Token is not found
+    }
+
+    try {
+      return this.http.post<{ isValid: boolean }>(
+        `${this.apiUrl}/validate-token`,
+        {
+          token,
+        }
+      );
+    } catch (error) {
+      console.error('Error validating token:', error);
+      return false; // Token is not valid
+    }
   }
 }

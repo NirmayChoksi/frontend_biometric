@@ -20,7 +20,7 @@ export class BiometricService {
       if (isAvailable) {
         // Proceed with biometric authentication
         try {
-          const result = await BiometricAuth.authenticate({
+          await BiometricAuth.authenticate({
             reason: 'Authentication',
             androidTitle: 'Authentication required',
             androidSubtitle: 'Verify Identity',

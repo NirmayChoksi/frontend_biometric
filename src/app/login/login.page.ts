@@ -8,16 +8,16 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { IonicModule } from '@ionic/angular';
 import { AuthService } from '../services/auth.service';
 import { Router } from '@angular/router';
+import { IonHeader, IonToolbar, IonTitle, IonContent, IonInput, IonItem, IonText, IonButton } from "@ionic/angular/standalone";
 
 @Component({
   selector: 'app-login',
   templateUrl: './login.page.html',
   styleUrls: ['./login.page.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, IonicModule],
+  imports: [IonButton, IonText, IonItem, IonInput, IonContent, IonTitle, IonToolbar, IonHeader, CommonModule, FormsModule, ReactiveFormsModule],
 })
 export class LoginPage implements OnInit {
   authForm!: FormGroup;
@@ -34,6 +34,7 @@ export class LoginPage implements OnInit {
       email: new FormControl('', [Validators.required, Validators.email]),
       password: new FormControl('', [Validators.required]),
     });
+    console.log(JSON.stringify(this.authForm.value));
   }
 
   toggleAuthMode() {
