@@ -13,7 +13,7 @@ export class AppComponent {
     private platform: Platform,
     private biometricService: BiometricService
   ) {
-    this.initializeApp();
+    // this.initializeApp();
   }
 
   initializeApp() {
@@ -22,12 +22,13 @@ export class AppComponent {
     });
   }
 
-  ngOnInit() {}
-
+  ngOnInit() {
+    // Additional initialization can be done here if needed.
+  }
   async authenticate() {
     try {
       const result = await this.biometricService.verifyIdentity();
-      console.log('Authentication successful', JSON.stringify(result));
+      console.log('Authentication successful', result);
     } catch (error) {
       console.error('Authentication failed', error);
     }

@@ -1,5 +1,10 @@
 import { Injectable } from '@angular/core';
-import { NativeBiometric } from 'capacitor-native-biometric';
+import {
+  AndroidBiometryStrength,
+  BiometricAuth,
+  BiometryError,
+  BiometryErrorType,
+} from '@aparajita/capacitor-biometric-auth';
 
 @Injectable({
   providedIn: 'root',
@@ -7,32 +12,40 @@ import { NativeBiometric } from 'capacitor-native-biometric';
 export class BiometricService {
   constructor() {}
 
-  verifyIdentity() {
-    NativeBiometric.isAvailable()
-      .then((isAvailable) => {
-        if (isAvailable) {
-          NativeBiometric.verifyIdentity({
-            reason: 'For easy log in',
-            title: 'Log in',
-            subtitle: 'Authenticate',
-            description: 'Please authenticate to proceed',
-            maxAttempts: 2,
-            useFallback: true,
-          })
-            .then((result) => {
-              alert('Biometric authentication successful');
-              console.log(result);
-            })
-            .catch((error) => {
-              console.error('Error verifying identity:', error);
-            });
-        } else {
-          alert('Biometric authentication is not available on this device.');
+  async verifyIdentity() {
+    try {
+      // Check if biometric authentication is available
+      const isAvailable = (await BiometricAuth.checkBiometry()).isAvailable;
+
+      if (isAvailable) {
+        // Proceed with biometric authentication
+        try {
+          const result = await BiometricAuth.authenticate({
+            reason: 'Authentication',
+            androidTitle: 'Authentication required',
+            androidSubtitle: 'Verify Identity',
+            androidConfirmationRequired: false,
+            androidBiometryStrength: AndroidBiometryStrength.weak,
+            allowDeviceCredential: true,
+            cancelTitle: 'Cancel',
+            iosFallbackTitle: 'Authentication required',
+          });
+        } catch (error) {
+          // error is always an instance of BiometryError.
+          if (error instanceof BiometryError) {
+            if (error.code !== BiometryErrorType.userCancel) {
+              // Display the error.
+              alert(error.message);
+            }
+          }
         }
-      })
-      .catch((e) => {
-        console.error(e);
-        alert('Authentication failed');
-      });
+      } else {
+        alert('Biometric authentication is not available on this device.');
+      }
+    } catch (e) {
+      // Handle error when checking availability
+      console.error('Error checking availability:', e);
+      alert('Authentication failed');
+    }
   }
 }
