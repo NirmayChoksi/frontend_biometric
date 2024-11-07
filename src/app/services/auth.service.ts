@@ -2,38 +2,69 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { Preferences } from '@capacitor/preferences';
-import { Observable, from } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { Observable, from, of } from 'rxjs';
+import { catchError, map, switchMap, tap } from 'rxjs/operators';
+import { BiometricService } from './biometric.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
   private apiUrl = 'https://backend-biometric.onrender.com/api/auth';
-
   private readonly tokenKey = 'token';
 
-  constructor(private http: HttpClient, private router: Router) {}
+  constructor(
+    private http: HttpClient,
+    private router: Router,
+    private biometricService: BiometricService
+  ) {}
 
   // Set token using Capacitor Preferences
-  private async setToken(token: string): Promise<void> {
-    await Preferences.set({ key: this.tokenKey, value: token });
+  private setToken(token: string): Observable<void> {
+    return from(Preferences.set({ key: this.tokenKey, value: token }));
   }
 
   // Get token using Capacitor Preferences
-  async getToken(): Promise<string | null> {
-    const { value } = await Preferences.get({ key: this.tokenKey });
-    return value;
+  getToken(): Observable<string | null> {
+    return from(Preferences.get({ key: this.tokenKey })).pipe(
+      map((result) => result.value)
+    );
   }
 
   // Login method
   login(email: string, password: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/login`, { email, password }).pipe(
-      tap(async (response: any) => {
+      tap((response: any) => {
         if (response.token) {
           console.log('response.token:', response.token);
-          await this.setToken(response.token);
+          this.setToken(response.token).subscribe(); // Store token in preferences
         }
+      }),
+      catchError((error) => {
+        console.error('Login failed:', error);
+        return of(null); // Return observable of null in case of error
+      })
+    );
+  }
+
+  attemptBiometricLogin(): Observable<boolean> {
+    return this.biometricService.verifyIdentity().pipe(
+      switchMap((isAuthenticated) => {
+        if (isAuthenticated) {
+          return this.getToken().pipe(
+            switchMap((token) => {
+              if (token) {
+                return this.validateToken();
+              }
+              return of(false); // No token retrieved
+            })
+          );
+        }
+        return of(false); // Biometric authentication failed
+      }),
+      catchError((error) => {
+        console.error('Biometric login failed:', error);
+        return of(false); // Return false in case of error
       })
     );
   }
@@ -43,38 +74,58 @@ export class AuthService {
     return this.http.post(`${this.apiUrl}/register`, { email, password }).pipe(
       tap((response: any) => {
         console.log('Registration successful:', response);
+      }),
+      catchError((error) => {
+        console.error('Registration failed:', error);
+        return of(null); // Return observable of null in case of error
       })
     );
   }
 
   // Logout and clear the token
-  async logout(): Promise<void> {
-    await Preferences.remove({ key: this.tokenKey });
-    this.router.navigate(['/login']);
+  logout(): Observable<void> {
+    return from(Preferences.remove({ key: this.tokenKey })).pipe(
+      switchMap(() => {
+        this.router.navigate(['/login']);
+        return of(undefined); // Return an observable of void (no value)
+      }),
+      catchError((error) => {
+        console.error('Logout failed:', error);
+        return of(undefined); // Return observable of undefined in case of error
+      })
+    );
   }
 
   // Helper function to check if user is authenticated
-  async isAuthenticated(): Promise<boolean> {
-    const token = await this.getToken();
-    return !!token;
+  isAuthenticated(): Observable<boolean> {
+    return this.getToken().pipe(
+      map((token) => !!token), // Return true if token exists
+      catchError(() => of(false)) // Return false in case of error
+    );
   }
 
-  async validateToken() {
-    const token = await this.getToken();
-    if (!token) {
-      return false; // Token is not found
-    }
-
-    try {
-      return this.http.post<{ isValid: boolean }>(
-        `${this.apiUrl}/validate-token`,
-        {
-          token,
+  validateToken(): Observable<boolean> {
+    return this.getToken().pipe(
+      switchMap((token) => {
+        if (!token) {
+          return of(false); // No token found
         }
-      );
-    } catch (error) {
-      console.error('Error validating token:', error);
-      return false; // Token is not valid
-    }
+        return this.http
+          .post<{ isValid: boolean }>(`${this.apiUrl}/validate-token`, {
+            token,
+          })
+          .pipe(
+            map((response) => response.isValid), // Return boolean based on response
+            catchError((error) => {
+              console.error('Error validating token:', error);
+              return of(false); // Return false if validation fails
+            })
+          );
+      }),
+      catchError((error) => {
+        console.error('Error validating token:', error);
+        return of(false); // Return false if there's an error
+      })
+    );
   }
 }

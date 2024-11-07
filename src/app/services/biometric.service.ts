@@ -5,47 +5,51 @@ import {
   BiometryError,
   BiometryErrorType,
 } from '@aparajita/capacitor-biometric-auth';
+import { catchError, from, map, Observable, of, switchMap } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
 })
 export class BiometricService {
-  constructor() {}
-
-  async verifyIdentity() {
-    try {
-      // Check if biometric authentication is available
-      const isAvailable = (await BiometricAuth.checkBiometry()).isAvailable;
-
-      if (isAvailable) {
-        // Proceed with biometric authentication
-        try {
-          await BiometricAuth.authenticate({
-            reason: 'Authentication',
-            androidTitle: 'Authentication required',
-            androidSubtitle: 'Verify Identity',
-            androidConfirmationRequired: false,
-            androidBiometryStrength: AndroidBiometryStrength.weak,
-            allowDeviceCredential: true,
-            cancelTitle: 'Cancel',
-            iosFallbackTitle: 'Authentication required',
-          });
-        } catch (error) {
-          // error is always an instance of BiometryError.
-          if (error instanceof BiometryError) {
-            if (error.code !== BiometryErrorType.userCancel) {
-              // Display the error.
-              alert(error.message);
-            }
-          }
+  verifyIdentity(): Observable<boolean> {
+    // Convert the checkBiometry promise to an observable
+    return from(BiometricAuth.checkBiometry()).pipe(
+      switchMap((biometryResult) => {
+        if (biometryResult.isAvailable) {
+          // If biometry is available, proceed with authentication
+          return from(
+            BiometricAuth.authenticate({
+              reason: 'Authentication',
+              androidTitle: 'Authentication required',
+              androidSubtitle: 'Verify Identity',
+              androidConfirmationRequired: false,
+              androidBiometryStrength: AndroidBiometryStrength.weak,
+              allowDeviceCredential: false,
+              cancelTitle: 'Cancel',
+              iosFallbackTitle: 'Authentication required',
+            })
+          ).pipe(
+            map(() => true), // Authentication successful
+            catchError((error) => {
+              if (
+                error instanceof BiometryError &&
+                error.code !== BiometryErrorType.userCancel
+              ) {
+                alert(error.message);
+              }
+              return of(false); // Return false if authentication fails
+            })
+          );
+        } else {
+          alert('Biometric authentication is not available on this device.');
+          return of(false); // Biometric not available
         }
-      } else {
-        alert('Biometric authentication is not available on this device.');
-      }
-    } catch (e) {
-      // Handle error when checking availability
-      console.error('Error checking availability:', e);
-      alert('Authentication failed');
-    }
+      }),
+      catchError((e) => {
+        console.error('Error checking availability:', e);
+        alert('Authentication failed');
+        return of(false); // Return false if there's an error checking availability
+      })
+    );
   }
 }
